@@ -1,33 +1,50 @@
+// src/app/api/award/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { jwtVerify } from 'jose';
 import { getQrSecrets } from '@/lib/secrets';
 
-const secret = new TextEncoder().encode(process.env.QR_SIGNING_SECRET!);
 const ppp = parseInt(process.env.POINTS_PER_PURCHASE || '1', 10);
+
+type Body = {
+  token: string;
+  amount: number | string;
+  payment_type: 'cash' | 'card';
+  shop_id: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const { token, amount, payment_type, shop_id } = await req.json();
-    if (!token || !amount || !payment_type || !shop_id)
+    const { token, amount, payment_type, shop_id } = (await req.json()) as Body;
+    if (!token || !amount || !payment_type || !shop_id) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
 
-    // Проверим QR-токен
-    const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
-    const cid = payload['cid'] as string;
+    // --- verify QR (current -> prev) ---
+    const { cur, prev } = await getQrSecrets();
+    let verified;
+    try {
+      verified = await jwtVerify(token, cur, { algorithms: ['HS256'] });
+    } catch {
+      if (!prev) return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+      verified = await jwtVerify(token, prev, { algorithms: ['HS256'] });
+    }
+    const payload = verified.payload as Record<string, unknown>;
+    const cid = payload['cid'] as string | undefined;
     if (!cid) return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
 
-    // Проверим сотрудника по токену Supabase (Bearer)
+    // --- staff auth (Bearer access token) ---
     const auth = req.headers.get('authorization');
     if (!auth?.startsWith('Bearer '))
       return NextResponse.json({ error: 'No auth' }, { status: 401 });
     const access = auth.slice(7);
     const { data: u, error: ue } = await supabaseAdmin.auth.getUser(access);
-    if (ue || !u?.user) return NextResponse.json({ error: 'Invalid staff token' }, { status: 401 });
+    if (ue || !u?.user)
+      return NextResponse.json({ error: 'Invalid staff token' }, { status: 401 });
 
+    // --- write tx + award points ---
     const amount_cents = Math.round(Number(amount) * 100);
 
-    // Создаём транзакцию
     const { data: tx, error: txErr } = await supabaseAdmin
       .from('transactions')
       .insert({
@@ -41,7 +58,7 @@ export async function POST(req: NextRequest) {
       .single();
     if (txErr) return NextResponse.json({ error: txErr.message }, { status: 500 });
 
-    const points = ppp; // фиксированное начисление за покупку
+    const points = ppp;
     const { error: pErr } = await supabaseAdmin
       .from('points_ledger')
       .insert({ customer_id: cid, delta_points: points, reason: 'purchase', tx_id: tx.id });
@@ -53,17 +70,15 @@ export async function POST(req: NextRequest) {
       .eq('customer_id', cid)
       .single();
 
-    return NextResponse.json({ ok: true, cid, tx_id: tx.id, awarded: points, balance: bal?.points ?? points });
+    return NextResponse.json({
+      ok: true,
+      cid,
+      tx_id: tx.id,
+      awarded: points,
+      balance: bal?.points ?? points,
+    });
   } catch (e: unknown) {
-  const msg = e instanceof Error ? e.message : String(e);
-  return NextResponse.json({ error: msg }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-}
-const { cur, prev } = await getQrSecrets();
-let payload;
-try {
-  ({ payload } = await jwtVerify(token, cur, { algorithms: ['HS256'] }));
-} catch {
-  if (!prev) throw new Error('Invalid token');
-  ({ payload } = await jwtVerify(token, prev, { algorithms: ['HS256'] }));
 }
