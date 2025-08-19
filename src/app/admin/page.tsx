@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Html5Qrcode } from 'html5-qrcode';
+import type { Session } from '@supabase/supabase-js';
 
 export default function Admin() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
   const [shopId, setShopId] = useState<string>('');
@@ -48,7 +49,10 @@ export default function Admin() {
       <div className="flex gap-2 items-center">
         <input placeholder="Shop ID" className="border p-2" value={shopId} onChange={e => setShopId(e.target.value)} />
         <input type="number" placeholder="Сумма (UAH)" className="border p-2" value={amount} onChange={e => setAmount(parseFloat(e.target.value || '0'))} />
-        <select className="border p-2" value={paymentType} onChange={e => setPaymentType(e.target.value as any)}>
+        <select
+ 		 className="border p-2"
+ 		 value={paymentType}
+ 		 onChange={(e) => setPaymentType(e.target.value as 'cash' | 'card')}/>
           <option value="cash">Наличные</option>
           <option value="card">Карта</option>
         </select>

@@ -40,8 +40,9 @@ export async function GET(req: NextRequest) { // для Vercel Cron (GET)
     if (!okByToken && !(await isAdmin(req))) throw new Error('Forbidden');
     await rotate();
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 403 });
+  } catch (e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  return NextResponse.json({ error: msg }, { status: 403 });
   }
 }
 

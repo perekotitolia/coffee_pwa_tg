@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     return NextResponse.json({ ok: true, cid, tx_id: tx.id, awarded: points, balance: bal?.points ?? points });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 const { cur, prev } = await getQrSecrets();
