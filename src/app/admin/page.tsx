@@ -52,7 +52,7 @@ export default function Admin() {
         <select
  		 className="border p-2"
  		 value={paymentType}
- 		 onChange={(e) => setPaymentType(e.target.value as 'cash' | 'card')}/>
+ 		 onChange={(e) => setPaymentType(e.target.value as 'cash' | 'card')}>
           <option value="cash">Наличные</option>
           <option value="card">Карта</option>
         </select>
