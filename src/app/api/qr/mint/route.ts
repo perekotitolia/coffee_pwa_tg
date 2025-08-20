@@ -5,15 +5,13 @@ import { mintQrToken } from '@/lib/jwt';
 export const runtime = 'nodejs';
 
 export async function POST() {
-  const store = cookies();
-  let did = store.get('did')?.value;
-
-  if (!did) did = crypto.randomUUID();
+  const store = await cookies();                    // ⬅️ нужно await
+  let did = store.get('did')?.value ?? crypto.randomUUID();
 
   const { token, expSec } = await mintQrToken(did, 60);
   const res = NextResponse.json({ token, expiresIn: expSec });
 
-  // ставим cookie, если её не было
+  // ставим cookie, если её ещё нет
   if (!store.get('did')) {
     res.cookies.set({
       name: 'did',
