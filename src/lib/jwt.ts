@@ -1,6 +1,11 @@
+// src/lib/jwt.ts
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+function getSecret(): Uint8Array {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error('JWT_SECRET is missing');
+  return new TextEncoder().encode(s);
+}
 
 export async function mintQrToken(did: string, ttlSec = 60) {
   const jti = crypto.randomUUID();
@@ -8,14 +13,14 @@ export async function mintQrToken(did: string, ttlSec = 60) {
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setIssuedAt()
     .setExpirationTime(`${ttlSec}s`)
-    .sign(secret);
+    .sign(getSecret());                         // <-- читаем при вызове
   return { token, jti, expSec: ttlSec };
 }
 
 type QrPayload = JWTPayload & { did?: string; jti?: string };
 
 export async function verifyQrToken(token: string): Promise<{ did: string; jti: string }> {
-  const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
+  const { payload } = await jwtVerify(token, getSecret(), { algorithms: ['HS256'] });
   const p = payload as QrPayload;
   if (typeof p.did !== 'string' || typeof p.jti !== 'string') {
     throw new Error('Bad token payload');
