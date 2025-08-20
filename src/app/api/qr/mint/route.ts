@@ -1,3 +1,4 @@
+// src/app/api/qr/mint/route.ts
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { mintQrToken } from '@/lib/jwt';
@@ -5,8 +6,8 @@ import { mintQrToken } from '@/lib/jwt';
 export const runtime = 'nodejs';
 
 export async function POST() {
-  const store = await cookies();                    // ⬅️ нужно await
-  let did = store.get('did')?.value ?? crypto.randomUUID();
+  const store = await cookies();                                // <-- await
+  const did = store.get('did')?.value ?? crypto.randomUUID();   // <-- const
 
   const { token, expSec } = await mintQrToken(did, 60);
   const res = NextResponse.json({ token, expiresIn: expSec });
