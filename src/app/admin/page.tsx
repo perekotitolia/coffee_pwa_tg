@@ -21,21 +21,28 @@ export default function AdminPage() {
   const [png, setPng] = useState('');
   const [checks, setChecks] = useState<Checks | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [err, setErr] = useState<string|null>(null);
   async function runChecks() {
     const res = await fetch('/api/admin/check', { cache: 'no-store' });
     setChecks(await res.json());
   }
 
   async function mintOnce() {
-    setLoading(true);
-    try {
-      const r = await fetch('/api/qr/mint', { method: 'POST' });
-      const { token } = await r.json();
-      const img = await QRCode.toDataURL(token, { errorCorrectionLevel: 'M', margin: 2, width: 288, scale: 8 });
-      setPng(img);
-    } finally { setLoading(false); }
+  setLoading(true);
+  setErr(null);
+  setPng('');
+  try {
+    const r = await fetch('/api/qr/mint', { method: 'POST' });
+    const j = await r.json();
+    if (!r.ok || !j?.token) throw new Error(j?.error || `HTTP ${r.status}`);
+    const img = await QRCode.toDataURL(j.token, { errorCorrectionLevel: 'M', margin: 2, width: 288, scale: 8 });
+    setPng(img);
+  } catch (e) {
+    setErr(e instanceof Error ? e.message : String(e));
+  } finally {
+    setLoading(false);
   }
+}
 
   useEffect(() => { runChecks(); }, []);
 
@@ -75,6 +82,8 @@ export default function AdminPage() {
       <section className="space-y-2">
         <h2 className="font-medium">Сгенерировать тестовый QR</h2>
         <button className="px-3 py-2 rounded border" onClick={mintOnce} disabled={loading}>{loading ? '…' : 'Mint'}</button>
+{err && <p className="text-xs text-red-500">Ошибка: {err}</p>}
+
         {png && (
           <div className="flex flex-col items-center gap-2">
             <img src={png} width={288} height={288} alt="QR" />

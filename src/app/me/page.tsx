@@ -5,14 +5,20 @@ import QRCode from 'qrcode';
 export default function MePage() {
   const [dataUrl, setDataUrl] = useState('');
   const [exp, setExp] = useState(0);
-
-  async function refresh() {
+  const [err, setErr] = useState<string|null>(null);
+async function refresh() {
+  try {
+    setErr(null);
     const res = await fetch('/api/qr/mint', { method: 'POST' });
-    const { token, expiresIn } = await res.json();
+    const { token, expiresIn, error } = await res.json();
+    if (!res.ok || !token) throw new Error(error || `HTTP ${res.status}`);
     const png = await QRCode.toDataURL(token, { errorCorrectionLevel: 'M', margin: 2, width: 288, scale: 8 });
     setDataUrl(png); setExp(expiresIn);
+  } catch (e) {
+    setErr(e instanceof Error ? e.message : String(e));
+    setDataUrl(''); setExp(0);
   }
-
+}
   useEffect(() => { refresh(); }, []);
   useEffect(() => {
     if (!exp) return; const id = setInterval(refresh, Math.max(5, exp - 5) * 1000);
