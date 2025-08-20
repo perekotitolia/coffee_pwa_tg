@@ -4,25 +4,38 @@ import { cookies } from 'next/headers';
 import { mintQrToken } from '@/lib/jwt';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'; // на всякий случай, чтобы не кешировалось
 
-export async function POST() {
-  const store = await cookies();                                // <-- await
-  const did = store.get('did')?.value ?? crypto.randomUUID();   // <-- const
+async function handleMint() {
+  try {
+    const store = await cookies(); // Next 15: async
+    const did = store.get('did')?.value ?? crypto.randomUUID();
 
-  const { token, expSec } = await mintQrToken(did, 60);
-  const res = NextResponse.json({ token, expiresIn: expSec });
+    const { token, expSec } = await mintQrToken(did, 60);
 
-  // ставим cookie, если её ещё нет
-  if (!store.get('did')) {
-    res.cookies.set({
-      name: 'did',
-      value: did,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: true,
-      maxAge: 60 * 60 * 24 * 365,
-      path: '/',
-    });
+    const res = NextResponse.json(
+      { token, expiresIn: expSec },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+
+    // ставим cookie, если её ещё нет
+    if (!store.get('did')) {
+      res.cookies.set({
+        name: 'did',
+        value: did,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: true,
+        maxAge: 60 * 60 * 24 * 365,
+        path: '/',
+      });
+    }
+    return res;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  return res;
 }
+
+export async function POST() { return handleMint(); }
+export async function GET()  { return handleMint(); } // удобно тестить в браузере
