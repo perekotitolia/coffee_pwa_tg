@@ -35,30 +35,38 @@ export default function SellerPage() {
     } as const;
 
     try {
-      await qrRef.current.start({ facingMode: 'environment' }, config,
+      await qrRef.current.start(
+        { facingMode: 'environment' },
+        config,
         async (decodedText: string) => {
           try {
             setStatus('Надсилаю…');
             const resp = await fetch('/api/qr/redeem', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: decodedText, vendorId })
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: decodedText, vendorId }),
             });
             const json = await resp.json();
             if (!resp.ok) throw new Error(json.error || 'Redeem failed');
-            setStatus(`OK: +${json.points} (did:${json.did.slice(0,8)}…)`);
+            setStatus(`OK: +${json.points} (did:${json.did.slice(0, 8)}…)`);
             await qrRef.current?.pause(true);
             setTimeout(() => qrRef.current?.resume(), 1500);
-          } catch (e: any) {
-            setStatus(`Помилка: ${e.message}`);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setStatus(`Помилка: ${msg}`);
           }
         },
-        () => {});
-    } catch (e: any) {
-      setStatus('Камера не стартанула: ' + (e?.message || String(e)));
+        () => {}
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus('Камера не стартанула: ' + msg);
     }
   }
 
-  async function stopScanner() { try { await qrRef.current?.stop(); await qrRef.current?.clear(); } catch {} }
+  async function stopScanner() {
+    try { await qrRef.current?.stop(); await qrRef.current?.clear(); } catch {}
+  }
   useEffect(() => () => { stopScanner(); }, []);
 
   return (

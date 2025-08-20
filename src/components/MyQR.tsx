@@ -6,6 +6,8 @@ export default function MyQR() {
   const [img, setImg] = useState('');
   const [size, setSize] = useState(160); // базовый размер поменьше
   const [big, setBig] = useState(false);
+  const refresh = useCallback(async () => { /* ... */ }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   async function refresh(w = size) {
     const r = await fetch('/api/my-qr', { cache: 'no-store' });

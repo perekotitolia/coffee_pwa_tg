@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
@@ -12,9 +12,13 @@ export async function mintQrToken(did: string, ttlSec = 60) {
   return { token, jti, expSec: ttlSec };
 }
 
-export async function verifyQrToken(token: string) {
+type QrPayload = JWTPayload & { did?: string; jti?: string };
+
+export async function verifyQrToken(token: string): Promise<{ did: string; jti: string }> {
   const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
-  const { did, jti } = payload as any;
-  if (!did || !jti) throw new Error('Bad token payload');
-  return { did, jti };
+  const p = payload as QrPayload;
+  if (typeof p.did !== 'string' || typeof p.jti !== 'string') {
+    throw new Error('Bad token payload');
+  }
+  return { did: p.did, jti: p.jti };
 }
