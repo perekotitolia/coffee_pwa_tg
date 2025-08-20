@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/admin/rotate-qr-secret?token=6500", "schedule": "0 4 * * 1" }
+  ]
+}

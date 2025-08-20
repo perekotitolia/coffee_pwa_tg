@@ -1,23 +1,28 @@
-
 'use client';
-import MyQR from '@/components/MyQR';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 
-export default function Page() {
+export default function MePage() {
+  const [dataUrl, setDataUrl] = useState('');
+  const [exp, setExp] = useState(0);
+
+  async function refresh() {
+    const res = await fetch('/api/qr/mint', { method: 'POST' });
+    const { token, expiresIn } = await res.json();
+    const png = await QRCode.toDataURL(token, { errorCorrectionLevel: 'M', margin: 2, width: 288, scale: 8 });
+    setDataUrl(png); setExp(expiresIn);
+  }
+
+  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    if (!exp) return; const id = setInterval(refresh, Math.max(5, exp - 5) * 1000);
+    return () => clearInterval(id);
+  }, [exp]);
+
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Мой QR</h1>
-      <MyQR />
-      <Points />
+    <div className="p-6 flex flex-col items-center gap-2">
+      {dataUrl && <img src={dataUrl} width={288} height={288} alt="QR" />}
+      <div className="text-sm opacity-70">QR оновлюється раз на ~{exp}s</div>
     </div>
   );
-}
-
-import { useEffect, useState } from 'react';
-
-function Points() {
-  const [points, setPoints] = useState<number>(0);
-  useEffect(() => {
-    fetch('/api/my-points').then(r => r.json()).then(d => setPoints(d.points || 0));
-  }, []);
-  return <div className="text-lg">Баллы: <b>{points}</b></div>;
 }
