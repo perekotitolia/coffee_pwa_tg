@@ -1,83 +1,87 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import QRCode from 'qrcode';
+
+type Checks = { hasJWT: boolean; hasUpstashUrl: boolean; hasUpstashToken: boolean };
 
 function useVendorId() {
   const [vendorId, setVendorId] = useState('');
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const fromUrl = url.searchParams.get('shop_id');
-    if (fromUrl) { localStorage.setItem('vendorId', fromUrl); setVendorId(fromUrl); return; }
     const saved = localStorage.getItem('vendorId');
     if (saved) setVendorId(saved);
   }, []);
   const save = (v: string) => { localStorage.setItem('vendorId', v); setVendorId(v); };
-  return { vendorId, save };
+  const clear = () => { localStorage.removeItem('vendorId'); setVendorId(''); };
+  return { vendorId, save, clear };
 }
 
-export default function SellerPage() {
-  const { vendorId, save } = useVendorId();
-  const [status, setStatus] = useState('');
-  const qrRef = useRef<Html5Qrcode | null>(null);
+export default function AdminPage() {
+  const { vendorId, save, clear } = useVendorId();
+  const [png, setPng] = useState('');
+  const [checks, setChecks] = useState<Checks | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function startScanner() {
-    if (!vendorId) return;
-    setStatus('Запуск камери…');
-    const id = 'qr-reader';
-    if (!qrRef.current) qrRef.current = new Html5Qrcode(id, { verbose: false });
-
-    const config = {
-      fps: 10,
-      qrbox: 260,
-      aspectRatio: 1,
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    } as const;
-
-    try {
-      await qrRef.current.start({ facingMode: 'environment' }, config,
-        async (decodedText: string) => {
-          try {
-            setStatus('Надсилаю…');
-            const resp = await fetch('/api/qr/redeem', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: decodedText, vendorId })
-            });
-            const json = await resp.json();
-            if (!resp.ok) throw new Error(json.error || 'Redeem failed');
-            setStatus(`OK: +${json.points} (did:${json.did.slice(0,8)}…)`);
-            await qrRef.current?.pause(true);
-            setTimeout(() => qrRef.current?.resume(), 1500);
-          } catch (e: any) {
-            setStatus(`Помилка: ${e.message}`);
-          }
-        },
-        () => {});
-    } catch (e: any) {
-      setStatus('Камера не стартанула: ' + (e?.message || String(e)));
-    }
+  async function runChecks() {
+    const res = await fetch('/api/admin/check', { cache: 'no-store' });
+    setChecks(await res.json());
   }
 
-  async function stopScanner() { try { await qrRef.current?.stop(); await qrRef.current?.clear(); } catch {} }
-  useEffect(() => () => { stopScanner(); }, []);
+  async function mintOnce() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/qr/mint', { method: 'POST' });
+      const { token } = await r.json();
+      const img = await QRCode.toDataURL(token, { errorCorrectionLevel: 'M', margin: 2, width: 288, scale: 8 });
+      setPng(img);
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { runChecks(); }, []);
 
   return (
-    <div className="p-4 max-w-sm mx-auto">
-      <h1 className="text-lg font-semibold mb-3">Seller Scanner</h1>
-      {!vendorId && (
-        <div className="mb-3">
-          <label className="text-sm">shop_id</label>
-          <input className="border rounded w-full p-2" onChange={e => save(e.target.value.trim())} placeholder="coffee-01" />
-          <p className="text-xs opacity-70 mt-1">Збережеться в браузері. Можна через URL: <code>?shop_id=coffee-01</code></p>
+    <div className="max-w-lg mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Admin</h1>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">Быстрые ссылки</h2>
+        <div className="flex gap-3">
+          <Link className="underline" href="/me">/me</Link>
+          <Link className="underline" href="/seller">/seller</Link>
         </div>
-      )}
-      {vendorId && <div className="mb-2 text-sm">Текущий shop_id: <b>{vendorId}</b></div>}
-      <div id="qr-reader" className="w-full aspect-square bg-black/5 rounded" />
-      <div className="flex gap-2 mt-3">
-        <button className="px-3 py-2 rounded bg-black text-white" onClick={startScanner}>Запустити</button>
-        <button className="px-3 py-2 rounded border" onClick={stopScanner}>Стоп</button>
-      </div>
-      <div className="mt-3 text-sm opacity-80">{status}</div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">shop_id (vendorId)</h2>
+        <div className="flex gap-2">
+          <input className="border rounded p-2 flex-1" placeholder="coffee-01" value={vendorId} onChange={e => save(e.target.value.trim())} />
+          <button className="border rounded px-3" onClick={clear}>clear</button>
+        </div>
+        <p className="text-xs opacity-70">Хранится в localStorage и используется /seller. Можно также передавать через URL: <code>?shop_id=...</code></p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">Проверки окружения</h2>
+        <button className="px-3 py-2 rounded bg-black text-white" onClick={runChecks}>Проверить</button>
+        {checks && (
+          <ul className="text-sm list-disc ml-5">
+            <li>JWT_SECRET: {checks.hasJWT ? 'OK' : 'нет'}</li>
+            <li>UPSTASH_REDIS_REST_URL: {checks.hasUpstashUrl ? 'OK' : 'нет'}</li>
+            <li>UPSTASH_REDIS_REST_TOKEN: {checks.hasUpstashToken ? 'OK' : 'нет'}</li>
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">Сгенерировать тестовый QR</h2>
+        <button className="px-3 py-2 rounded border" onClick={mintOnce} disabled={loading}>{loading ? '…' : 'Mint'}</button>
+        {png && (
+          <div className="flex flex-col items-center gap-2">
+            <img src={png} width={288} height={288} alt="QR" />
+            <p className="text-xs opacity-70">Наведи на него сканером в /seller</p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
