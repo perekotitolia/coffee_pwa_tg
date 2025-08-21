@@ -1,7 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-type RedeemResp = { ok?: boolean; error?: string; did?: string; points?: number; totalPoints?: number };
+
+type RedeemResp = {
+  ok?: boolean;
+  error?: string;
+  did?: string;
+  points?: number;
+  totalPoints?: number;
+};
 
 function useVendorId() {
   const [vendorId, setVendorId] = useState('');
@@ -22,7 +29,7 @@ export default function SellerPage() {
   const qrRef = useRef<Html5Qrcode | null>(null);
 
   async function startScanner() {
-    if (!vendorId) return;
+    if (!vendorId) return setStatus('Вкажіть shop_id');
     setStatus('Запуск камери…');
     const id = 'qr-reader';
     if (!qrRef.current) qrRef.current = new Html5Qrcode(id, { verbose: false });
@@ -42,19 +49,26 @@ export default function SellerPage() {
         async (decodedText: string) => {
           try {
             setStatus('Надсилаю…');
+            const resp = await fetch('/api/qr/redeem', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: decodedText, vendorId }), // используем decodedText
+            });
             const json: RedeemResp = await resp.json();
-if (!resp.ok) throw new Error(json.error || 'Redeem failed');
-setStatus(`OK: +${json.points} → всего ${json.totalPoints} (did:${json.did?.slice(0,8)}…)`);
+            if (!resp.ok) throw new Error(json.error || `HTTP ${resp.status}`);
+            setStatus(
+              `OK: +${json.points ?? 0} → всего ${json.totalPoints ?? '—'} (did:${(json.did ?? '').slice(0, 8)}…)`
+            );
             await qrRef.current?.pause(true);
             setTimeout(() => qrRef.current?.resume(), 1500);
-          } catch (e: unknown) {
+          } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             setStatus(`Помилка: ${msg}`);
           }
         },
         () => {}
       );
-    } catch (e: unknown) {
+    } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus('Камера не стартанула: ' + msg);
     }
@@ -71,8 +85,14 @@ setStatus(`OK: +${json.points} → всего ${json.totalPoints} (did:${json.di
       {!vendorId && (
         <div className="mb-3">
           <label className="text-sm">shop_id</label>
-          <input className="border rounded w-full p-2" onChange={e => save(e.target.value.trim())} placeholder="coffee-01" />
-          <p className="text-xs opacity-70 mt-1">Збережеться в браузері. Можна через URL: <code>?shop_id=coffee-01</code></p>
+          <input
+            className="border rounded w-full p-2"
+            onChange={(e) => save(e.target.value.trim())}
+            placeholder="coffee-01"
+          />
+          <p className="text-xs opacity-70 mt-1">
+            Збережеться в браузері. Можна через URL: <code>?shop_id=coffee-01</code>
+          </p>
         </div>
       )}
       {vendorId && <div className="mb-2 text-sm">Текущий shop_id: <b>{vendorId}</b></div>}
