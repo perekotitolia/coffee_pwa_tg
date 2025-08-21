@@ -84,7 +84,7 @@ export default function MePage() {
       <div className="text-sm opacity-70">QR оновлюється раз на ~{exp}s</div>
 
       <div className="flex flex-col items-center gap-2">
-        <div className="text-base">Баллы: <b>{points ?? '—'}</b></div>
+        <div className="text-base">Бали: <b>{points ?? '—'}</b></div>
 
         {/* Пунш-карта на 6 кружків */}
         <div className="flex gap-3">
