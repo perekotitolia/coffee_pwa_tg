@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { mintQrToken } from '@/lib/jwt';
 import { log } from '@/lib/logger';
+import { kv } from '@/lib/kv';                 // ⬅️ добавили
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,12 +16,15 @@ function getClientMeta(req: Request) {
 async function handleMint(req: Request) {
   try {
     const meta = getClientMeta(req);
-    const store = await cookies(); // Next 15
+    const store = await cookies();
     const did = store.get('did')?.value ?? crypto.randomUUID();
 
-    const { token, jti, expSec } = await mintQrToken(did, 60);
+    // ⬇️ отметим первого клиента и залогируем с client_id
+    const firstSeen = await kv.set(`seen:client:${did}`, '1', { nx: true, ex: 60 * 60 * 24 * 365 });
+    if (firstSeen) log('info', 'клиент зарегистрирован', { client_id: did, ...meta });
 
-    log('info', 'Код покупателя сгенерирован', { did, jti, expSec, ...meta });
+    const { token, jti, expSec } = await mintQrToken(did, 60);
+    log('info', 'Код покупателя сгенерирован', { client_id: did, jti, expSec, ...meta });
 
     const res = NextResponse.json(
       { token, expiresIn: expSec },
@@ -47,4 +51,5 @@ async function handleMint(req: Request) {
 }
 
 export async function POST(req: Request) { return handleMint(req); }
-export async function GET(req: Request)  { return handleMint(req); } // удобно тестить в браузере
+export async function GET(req: Request)  { return handleMint(req); }
+

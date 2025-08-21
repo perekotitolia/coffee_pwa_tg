@@ -26,35 +26,31 @@ export async function POST(req: Request) {
   try {
     const { did, jti } = await verifyQrToken(raw);
 
-    // ЛОГИ: оба события на попытке скана
-    log('info', 'код покупателя отсканирован', { did, jti, vendorId, ...m });
+    // Скан-события
+    log('info', 'код покупателя отсканирован', { client_id: did, jti, vendorId, ...m });
     log('info', 'код продавца отсканирован', { vendorId, ...m });
 
-    // одноразовость: NX + TTL 120с
+    // anti-replay
     const ok = await kv.set(`qr:${jti}`, did, { nx: true, ex: 120 });
     if (!ok) {
-      log('warn', 'Попытка повторно отсканировать код', { vendorId, did, jti, ...m });
+      log('warn', 'Попытка повторно отсканировать код', { client_id: did, vendorId, jti, ...m });
       return NextResponse.json({ error: 'Already used / expired' }, { status: 409 });
     }
 
-    // начисляем баллы (по умолчанию 1 за скан) и возвращаем общий баланс
-    const credited =
-      typeof points === 'number' ? points : Math.max(1, Math.round((amount ?? 0) * 0.05));
+    // начисление + общий баланс
+    const credited = typeof points === 'number' ? points : Math.max(1, Math.round((amount ?? 0) * 0.05));
     const totalPoints = await kv.incrby(`points:${did}`, credited);
 
-    log('info', 'Балы начислены такому-то покупателю', {
+    log('info', 'Баллы начислены клиенту', {
+      client_id: did,
       vendorId,
-      did,
       jti,
       points: credited,
       totalPoints,
     });
 
-    // пометим магазин как впервые замеченный (регистрация)
-    const firstSeen = await kv.set(`seen:vendor:${vendorId}`, '1', {
-      nx: true,
-      ex: 60 * 60 * 24 * 365,
-    });
+    // регистрация магазина при первом появлении
+    const firstSeen = await kv.set(`seen:vendor:${vendorId}`, '1', { nx: true, ex: 60 * 60 * 24 * 365 });
     if (firstSeen) log('info', 'Магазин зарегистрирован', { vendorId });
 
     return NextResponse.json({ ok: true, did, vendorId, points: credited, totalPoints });
