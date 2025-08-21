@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+type RedeemResp = { ok?: boolean; error?: string; did?: string; points?: number; totalPoints?: number };
 
 function useVendorId() {
   const [vendorId, setVendorId] = useState('');
@@ -41,14 +42,9 @@ export default function SellerPage() {
         async (decodedText: string) => {
           try {
             setStatus('Надсилаю…');
-            const resp = await fetch('/api/qr/redeem', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: decodedText, vendorId }),
-            });
-            const json = await resp.json();
-            if (!resp.ok) throw new Error(json.error || 'Redeem failed');
-            setStatus(`OK: +${json.points} (did:${json.did.slice(0, 8)}…)`);
+            const json: RedeemResp = await resp.json();
+if (!resp.ok) throw new Error(json.error || 'Redeem failed');
+setStatus(`OK: +${json.points} → всего ${json.totalPoints} (did:${json.did?.slice(0,8)}…)`);
             await qrRef.current?.pause(true);
             setTimeout(() => qrRef.current?.resume(), 1500);
           } catch (e: unknown) {
