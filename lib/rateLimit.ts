@@ -1,3 +1,4 @@
+// lib/rateLimit.ts
 import { redis } from './redis'
 
 export async function hitOnce(key: string, ttlSeconds: number): Promise<boolean> {

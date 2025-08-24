@@ -1,8 +1,7 @@
-'use client'
+// lib/redis.ts
+import { Redis } from '@upstash/redis'
 
-import { createClient } from '@supabase/supabase-js'
-
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-)
+export const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
