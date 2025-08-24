@@ -1,5 +1,6 @@
 {
-  "crons": [
-    { "path": "/api/admin/rotate-qr-secret?token=6500", "schedule": "0 4 * * 1" }
-  ]
+  "regions": ["fra1"],
+  "functions": {
+    "app/api/**": { "maxDuration": 10 }
+  }
 }
