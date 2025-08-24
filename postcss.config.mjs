@@ -1,7 +1,7 @@
-// Next 15 ожидает плагин @tailwindcss/postcss
+// postcss.config.mjs
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    tailwindcss: {},
     autoprefixer: {},
   },
 }

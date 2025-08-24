@@ -23,7 +23,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",
-    "@tailwindcss/postcss": "^4.1.12",
     "@types/node": "^20.14.9",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.3",
