@@ -13,68 +13,53 @@ type Payload = {
   exp: number
 }
 
-function getDeviceId(): string {
-  const key = 'coffee.deviceId'
-  let id = localStorage.getItem(key)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(key, id)
-  }
-  return id
-}
-
 export default function MePage() {
+  const [deviceId, setDeviceId] = useState<string | null>(null)
   const [dataUrl, setDataUrl] = useState<string>('')
   const [expiresIn, setExpiresIn] = useState<number>(0)
   const [progress, setProgress] = useState<number>(0)
 
-  const deviceId = useMemo(getDeviceId, [])
-
-  // Fetch balance/progress (demo: derived from local value, real: fetch from API)
+  // Get deviceId only on client to avoid SSR/prerender crashes
   useEffect(() => {
-    // Optionally, load points from server
+    if (typeof window === 'undefined') return
+    const key = 'coffee.deviceId'
+    let id = window.localStorage.getItem(key)
+    if (!id) {
+      id = crypto.randomUUID()
+      window.localStorage.setItem(key, id)
+    }
+    setDeviceId(id)
+  }, [])
+
+  // Optionally, load points from server
+  useEffect(() => {
     async function load() {
-      try {
-        const res = await fetch('/api/health')
-        if (res.ok) {
-          // no-op; in реале запросили бы баланс
-        }
-      } catch {}
+      try { await fetch('/api/health') } catch {}
     }
     load()
   }, [])
 
-  // Rotate QR every 45s
+  // Rotate QR every 45s (only when deviceId is ready)
   useEffect(() => {
+    if (!deviceId) return
     let mounted = true
     let timer: any
 
     const rotate = async () => {
       const now = Math.floor(Date.now() / 1000)
-      const payload: Payload = {
-        v: 1,
-        type: 'user',
-        deviceId,
-        iat: now,
-        exp: now + 45
-      }
+      const payload: Payload = { v: 1, type: 'user', deviceId, iat: now, exp: now + 45 }
       const text = JSON.stringify(payload)
-      const dataUrl = await QRCode.toDataURL(text, { errorCorrectionLevel: 'M', margin: 1, scale: 6 })
+      const url = await QRCode.toDataURL(text, { errorCorrectionLevel: 'M', margin: 1, scale: 6 })
       if (!mounted) return
-      setDataUrl(dataUrl)
+      setDataUrl(url)
       setExpiresIn(payload.exp - now)
     }
 
     rotate()
     timer = setInterval(rotate, 45_000)
-
     const tick = setInterval(() => setExpiresIn(x => Math.max(0, x - 1)), 1000)
 
-    return () => {
-      mounted = false
-      clearInterval(timer)
-      clearInterval(tick)
-    }
+    return () => { mounted = false; clearInterval(timer); clearInterval(tick) }
   }, [deviceId])
 
   return (
@@ -92,7 +77,7 @@ export default function MePage() {
             <div className="text-sm text-zinc-300">Прогрес до «БЕЗКОШТОВНА КАВА»</div>
             <ProgressSix filled={progress} />
           </div>
-          <LinkTelegramButton deviceId={deviceId} />
+          {deviceId && <LinkTelegramButton deviceId={deviceId} />}
         </div>
       </div>
       <p className="text-zinc-400 text-sm">
