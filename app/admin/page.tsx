@@ -40,6 +40,7 @@ export default function AdminPage() {
         <div className="text-sm text-zinc-400">Последний QR: <span className="text-zinc-200 break-all">{lastCode || '—'}</span></div>
         <div className="text-sm">{result}</div>
       </div>
+      <a href="/admin/profiles" className="btn">Список акаунтів</a>
     </main>
   )
 }

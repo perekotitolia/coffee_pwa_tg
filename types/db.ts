@@ -4,6 +4,9 @@ export type Profile = {
   device_id: string | null
   tg_id: number | null
   link_token: string | null
+  full_name: string | null
+  dob: string | null // YYYY-MM-DD
+  marketing_opt_in: boolean
   points: number
 }
 
