@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     } else if (text === '/qr') {
       const { data: prof } = await sb.from('profiles').select('*').eq('tg_id', chatId).maybeSingle()
       if (!prof?.device_id) {
-        await sendMessage(chatId.toString(), 'Спочатку привʼяжіть додаток кнопкою у розділі ${site}/me.')
+        await sendMessage(chatId.toString(), 'Спочатку привʼяжіть додаток кнопкою у розділі ' + site + '/me.')
       } else {
         const now = Math.floor(Date.now() / 1000)
         const payload = { v: 1, type: 'user', deviceId: prof.device_id, iat: now, exp: now + 45 }
