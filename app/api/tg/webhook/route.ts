@@ -32,7 +32,17 @@ function parseDob(input: string): string | null {
   const [_, y, mo, d] = m
   return `${y}-${mo}-${d}`
 }
-
+function getSiteBase(req: NextRequest) {
+  const env =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL
+  if (env) return env.startsWith('http') ? env : `https://${env}`
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
+  const proto = req.headers.get('x-forwarded-proto') || 'https'
+  return `${proto}://${host}`
+}
 export async function POST(req: NextRequest) {
   try {
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET
