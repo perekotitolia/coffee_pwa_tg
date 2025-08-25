@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
 
     const upd = (await req.json()) as Update
     const msg = upd.message
+    const site = getSiteBase(req)
     if (!msg?.text) return NextResponse.json({ ok: true })
 
     const chatId = msg.chat.id
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
     } else if (text === '/qr') {
       const { data: prof } = await sb.from('profiles').select('*').eq('tg_id', chatId).maybeSingle()
       if (!prof?.device_id) {
-        await sendMessage(chatId.toString(), 'Спочатку привʼяжіть додаток кнопкою у розділі /me.')
+        await sendMessage(chatId.toString(), 'Спочатку привʼяжіть додаток кнопкою у розділі ${site}/me.')
       } else {
         const now = Math.floor(Date.now() / 1000)
         const payload = { v: 1, type: 'user', deviceId: prof.device_id, iat: now, exp: now + 45 }
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
       await sb.from('profiles').update({ marketing_opt_in: true }).eq('tg_id', chatId)
       await sendMessage(chatId.toString(), 'Підписка на повідомлення увімкнена. Дякуємо!')
     } else {
-      await sendMessage(chatId.toString(), 'Команди: /start, /balance, /qr, /optin, /optout')
+      await sendMessage(chatId.toString(), 'Сайт: ${site}, Команди: /start, /balance, /qr, /optin, /optout')
     }
 
     return NextResponse.json({ ok: true })
