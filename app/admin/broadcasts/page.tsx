@@ -286,7 +286,7 @@ const SQL_MIGRATION = [
   "",
   "create or replace view v_audience_customers as",
   "select",
-  "  nullif(regexp_replace(c.tg_id, \\"\\D\\\", '', 'g'), '')::bigint as tg_id,",
+  "  nullif(regexp_replace(c.tg_id, '[^0-9]', '', 'g'), '')::bigint as tg_id,",
   "  null::int4 as points,",
   "  true as opt_in,",
   "  (select max(t.created_at) from transactions t where t.customer_id = c.id) as last_activity_at,",
