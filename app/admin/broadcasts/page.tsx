@@ -224,79 +224,8 @@ export default function BroadcastsPage() {
       </section>
 
       {/* Developer helper: SQL migration as a string constant (copy when needed) */}
-      <details className="mt-6">
-        <summary className="cursor-pointer select-none">🔧 Show SQL migration (copy & run in Supabase)</summary>
-        <pre className="p-3 bg-slate-50 rounded overflow-auto text-xs">{SQL_MIGRATION}</pre>
-      </details>
+      
     </main>
   )
 }
 
-// Keep this as a local constant (no export) to comply with Next.js Page rules.
-const SQL_MIGRATION = [
-  "-- campaigns",
-  "create table if not exists campaigns (",
-  "  id bigserial primary key,",
-  "  title text,",
-  "  body text not null,",
-  "  parse_mode text check (parse_mode in ('Markdown','HTML')) default 'Markdown',",
-  "  image_url text,",
-  "  button_text text,",
-  "  button_url text,",
-  "  created_at timestamptz default now(),",
-  "  created_by text,",
-  "  state text not null default 'draft'",
-  ");",
-  "",
-  "create table if not exists campaign_segments (",
-  "  id bigserial primary key,",
-  "  campaign_id bigint references campaigns(id) on delete cascade,",
-  "  kind text not null default 'json',",
-  "  filters jsonb,",
-  "  where_sql text",
-  ");",
-  "",
-  "create table if not exists campaign_recipients (",
-  "  id bigserial primary key,",
-  "  campaign_id bigint references campaigns(id) on delete cascade,",
-  "  tg_id bigint not null",
-  ");",
-  "create index if not exists idx_recips_campaign on campaign_recipients(campaign_id);",
-  "",
-  "create table if not exists campaign_logs (",
-  "  id bigserial primary key,",
-  "  campaign_id bigint references campaigns(id) on delete cascade,",
-  "  tg_id bigint not null,",
-  "  status text not null,",
-  "  error text,",
-  "  created_at timestamptz default now()",
-  ");",
-  "create index if not exists idx_logs_campaign on campaign_logs(campaign_id);",
-  "",
-  "-- audience views",
-  "create or replace view v_audience_profiles as",
-  "select",
-  "  p.tg_id::bigint as tg_id,",
-  "  p.points as points,",
-  "  coalesce(p.marketing_opt_in, true) as opt_in,",
-  "  (select max(pe.created_at) from points_events pe where pe.profile_id = p.id) as last_activity_at,",
-  "  (select t.shop_id from transactions t where t.customer_id = p.id order by t.created_at desc limit 1) as last_shop_id",
-  "from profiles p",
-  "where p.tg_id is not null;",
-  "",
-  "create or replace view v_audience_customers as",
-  "select",
-  "  nullif(regexp_replace(c.tg_id, '[^0-9]', '', 'g'), '')::bigint as tg_id,",
-  "  null::int4 as points,",
-  "  true as opt_in,",
-  "  (select max(t.created_at) from transactions t where t.customer_id = c.id) as last_activity_at,",
-  "  (select t.shop_id from transactions t where t.customer_id = c.id order by t.created_at desc limit 1) as last_shop_id",
-  "from customers c",
-  "where c.tg_id is not null;",
-  "",
-  "create or replace view v_audience_all as",
-  "select * from v_audience_profiles",
-  "union",
-  "select * from v_audience_customers;",
-].join('
-')
