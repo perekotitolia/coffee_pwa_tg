@@ -47,16 +47,40 @@ if (typeof window !== 'undefined' && !(window as any).__BCAST_HELPER_TESTED__) {
 }
 
 // ---- Small fetch helper ----------------------------------------------------
+// оставляем adminHeaders как есть
 const adminHeaders = () => ({
   'content-type': 'application/json',
-  'x-admin-key': typeof window !== 'undefined' ? (localStorage.getItem('ADMIN_API_KEY') || '') : ''
+  'x-admin-key': (typeof window !== 'undefined' && localStorage.getItem('ADMIN_API_KEY')) || ''
 })
 
+// НОВЫЙ универсальный fetch-хелпер
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...(init || {}), headers: { ...adminHeaders(), ...(init?.headers || {}) } })
-  const json = await res.json()
-  if (!res.ok || json?.ok === false) throw new Error(json?.error || res.statusText)
-  return json as T
+
+  let data: any = null
+  const ct = res.headers.get('content-type') || ''
+
+  try {
+    if (ct.includes('application/json')) {
+      data = await res.json()
+    } else {
+      const text = await res.text()
+      try { data = text ? JSON.parse(text) : null } catch { data = text } // вдруг пришёл текст
+    }
+  } catch {
+    // Пустое тело (например, 204) — оставляем data = null
+  }
+
+  if (!res.ok || (data && typeof data === 'object' && data.ok === false)) {
+    const msg =
+      (data && (data.error || data.message)) ||
+      (typeof data === 'string' ? data : '') ||
+      res.statusText
+    throw new Error(msg)
+  }
+
+  // На случай «успеха без тела» вернём пустой объект, чтобы кнопки не падали
+  return (data ?? ({} as any)) as T
 }
 
 // ---- UI --------------------------------------------------------------------
