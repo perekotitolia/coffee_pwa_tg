@@ -1,14 +1,15 @@
 'use client'
 
 // Broadcast Admin page (Next.js /app/admin/broadcasts/page.tsx)
-// This file replaces the previous markdown-based canvas so it compiles as TSX.
-// It provides a working UI that talks to the admin API endpoints you add on the server.
-// No non-code characters at the top (fixes SyntaxError: Unexpected token (1:0)).
+// Fix: Next.js pages cannot have arbitrary named exports. Removed all `export`ed
+// helpers/types/constants to satisfy the Page type checker.
 
 import React, { useEffect, useMemo, useState } from 'react'
 
 // ---- Types & helpers -------------------------------------------------------
-export type AudienceFilters = {
+// NOTE: Do not export anything from a Page file. Keep helpers local or move to /lib.
+
+type AudienceFilters = {
   sources?: ("profiles" | "customers")[]
   marketing_only?: boolean
   min_points?: number
@@ -18,7 +19,7 @@ export type AudienceFilters = {
   exclude_tg_ids?: number[]
 }
 
-export function sanitizeTgId(x: unknown): number | null {
+function sanitizeTgId(x: unknown): number | null {
   if (x == null) return null
   const digits = String(x).replace(/\D/g, '')
   if (!digits) return null
@@ -26,14 +27,13 @@ export function sanitizeTgId(x: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export function chunk<T>(arr: T[], n = 1000): T[][] {
+function chunk<T>(arr: T[], n = 1000): T[][] {
   const out: T[][] = []
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
   return out
 }
 
 // Simple runtime tests (executed once in browser) to ensure helpers behave.
-// These are not e2e tests, but they protect us from regressions.
 if (typeof window !== 'undefined' && !(window as any).__BCAST_HELPER_TESTED__) {
   (window as any).__BCAST_HELPER_TESTED__ = true
   // sanitizeTgId tests
@@ -47,13 +47,13 @@ if (typeof window !== 'undefined' && !(window as any).__BCAST_HELPER_TESTED__) {
 }
 
 // ---- Small fetch helper ----------------------------------------------------
-const headers = () => ({
+const adminHeaders = () => ({
   'content-type': 'application/json',
   'x-admin-key': typeof window !== 'undefined' ? (localStorage.getItem('ADMIN_API_KEY') || '') : ''
 })
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...(init || {}), headers: { ...headers(), ...(init?.headers || {}) } })
+  const res = await fetch(url, { ...(init || {}), headers: { ...adminHeaders(), ...(init?.headers || {}) } })
   const json = await res.json()
   if (!res.ok || json?.ok === false) throw new Error(json?.error || res.statusText)
   return json as T
@@ -232,8 +232,8 @@ export default function BroadcastsPage() {
   )
 }
 
-// Embedding the SQL as a string so this file stays valid TSX while still shipping migration content.
-export const SQL_MIGRATION = String.raw`-- campaigns
+// Keep this as a local constant (no export) to comply with Next.js Page rules.
+const SQL_MIGRATION = String.raw`-- campaigns
 create table if not exists campaigns (
   id bigserial primary key,
   title text,
@@ -296,4 +296,4 @@ where c.tg_id is not null;
 create or replace view v_audience_all as
 select * from v_audience_profiles
 union
-select * from v_audience_customers;`
+select * from v_audience_customers;
