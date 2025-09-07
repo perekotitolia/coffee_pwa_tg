@@ -1,8 +1,3 @@
-/**
- * Tests (run locally):
- * curl -X POST -H "x-admin-key: $ADMIN_API_KEY" https://<host>/api/admin/broadcasts/123/drain
- */
-
 // ==============================================================
 // FILE: app/api/admin/broadcasts/[id]/start/route.ts
 // ==============================================================
@@ -19,9 +14,9 @@ function assertAdmin2(req: Request) {
   return null
 }
 
-export async function POST(req: Request, context: { params: { id: string } }) {
+export async function POST(req: Request, { params }: any) {
   const unauth = assertAdmin2(req); if (unauth) return unauth
-  const id = Number(context.params.id)
+  const id = Number(params.id)
   const supa = createServerClient()
 
   const { data: recs, error } = await supa.from('campaign_recipients').select('tg_id').eq('campaign_id', id)

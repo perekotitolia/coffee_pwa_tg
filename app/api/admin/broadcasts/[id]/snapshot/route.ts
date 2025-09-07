@@ -1,5 +1,3 @@
-/** curl -X POST -H "x-admin-key: $ADMIN_API_KEY" https://<host>/api/admin/broadcasts/123/start */
-
 // ==============================================================
 // FILE: app/api/admin/broadcasts/[id]/snapshot/route.ts
 // ==============================================================
@@ -15,9 +13,9 @@ function assertAdmin3(req: Request) {
   return null
 }
 
-export async function POST(req: Request, context: { params: { id: string } }) {
+export async function POST(req: Request, { params }: any) {
   const unauth = assertAdmin3(req); if (unauth) return unauth
-  const id = Number(context.params.id)
+  const id = Number(params.id)
   const supa = createServerClient()
 
   const { data: seg } = await supa.from('campaign_segments').select('*').eq('campaign_id', id).maybeSingle()
