@@ -24,10 +24,10 @@ export async function POST(req: Request, { params }: any) {
 
   let processed = 0
   for (let i = 0; i < BATCH; i++) {
-    const raw = await redis.lpop(`broadcast:${id}:q`)
+    const raw = await redis.lpop(`broadcast:${id}:q` as any) as any
     if (!raw) break
     processed++
-    const job = JSON.parse(raw)
+    const job = JSON.parse(typeof raw === 'string' ? raw : String(raw))
     const { data: c } = await supa.from('campaigns')
       .select('id, body, image_url, button_text, button_url, parse_mode')
       .eq('id', job.campaign_id).single()
