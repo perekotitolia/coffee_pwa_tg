@@ -225,16 +225,17 @@ export default function BroadcastsPage() {
     type="file"
     accept="image/*"
     onChange={async (e) => {
-      const f = e.currentTarget.files?.[0]; if (!f) return
+      const input = e.currentTarget
+      const f = input?.files?.[0]; if (!f) return
       try {
         setBusy(true)
-        const url = await uploadFileToStorage(f) // ⬅️ аплоадимо файл
-        setImageUrl(url)                          // ⬅️ автоматично підставляємо URL
+        const url = await uploadFileToStorage(f)
+        setImageUrl(url)
       } catch (err: any) {
         alert(`Upload error: ${err?.message || err}`)
       } finally {
         setBusy(false)
-        e.currentTarget.value = '' // скинути вибір файла
+        if (input) input.value = ''
       }
     }}
   />
