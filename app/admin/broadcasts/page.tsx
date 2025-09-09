@@ -52,7 +52,18 @@ const adminHeaders = () => ({
   'content-type': 'application/json',
   'x-admin-key': (typeof window !== 'undefined' && localStorage.getItem('ADMIN_API_KEY')) || ''
 })
-
+// 1) Add a small helper near api()/adminHeaders (client side):
+// --- BEGIN SNIPPET ---
+async function uploadFile(url: string, file: File) {
+  const key = (typeof window !== 'undefined' && localStorage.getItem('ADMIN_API_KEY')) || ''
+  const fd = new FormData(); fd.append('file', file)
+  const res = await fetch(url, { method: 'POST', headers: { 'x-admin-key': key }, body: fd })
+  let data: any
+  try { data = await res.json() } catch { data = { ok: false, error: await res.text() } }
+  if (!res.ok || data?.ok === false) throw new Error(data?.error || res.statusText)
+  return data as { ok: true, url: string }
+}
+// --- END SNIPPET ---
 // НОВЫЙ универсальный fetch-хелпер
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...(init || {}), headers: { ...adminHeaders(), ...(init?.headers || {}) } })
@@ -198,7 +209,33 @@ export default function BroadcastsPage() {
         <input className="w-full p-2 rounded border" placeholder="Заголовок (необязательно)" value={title} onChange={e=>setTitle(e.target.value)} />
         <textarea className="w-full p-2 rounded border h-40" placeholder="Текст сообщения (Markdown/HTML)" value={body} onChange={e=>setBody(e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
-          <input className="p-2 rounded border" placeholder="URL картинки (опц.)" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} />
+          <div className="flex gap-2 items-center">
+  <input
+    type="text"
+    placeholder="URL картинки (опц.)"
+    value={imageUrl}
+    onChange={(e) => setImageUrl(e.target.value)}
+    className="flex-1"
+  />
+  <input
+    type="file"
+    accept="image/*"
+    onChange={async (e) => {
+      const f = e.currentTarget.files?.[0]; if (!f) return
+      try {
+        setBusy(true)
+        const url = await uploadFileToStorage(f) // ⬅️ аплоадимо файл
+        setImageUrl(url)                          // ⬅️ автоматично підставляємо URL
+      } catch (err: any) {
+        alert(`Upload error: ${err?.message || err}`)
+      } finally {
+        setBusy(false)
+        e.currentTarget.value = '' // скинути вибір файла
+      }
+    }}
+  />
+</div>
+
           <input className="p-2 rounded border" placeholder="Текст кнопки (опц.)" value={buttonText} onChange={e=>setButtonText(e.target.value)} />
           <input className="p-2 rounded border col-span-2" placeholder="URL кнопки (опц.)" value={buttonUrl} onChange={e=>setButtonUrl(e.target.value)} />
         </div>
