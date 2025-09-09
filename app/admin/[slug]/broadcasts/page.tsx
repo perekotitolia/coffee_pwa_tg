@@ -95,33 +95,15 @@ async function uploadFileToStorage(slug: string, file: File): Promise<string> {
 
 // --- END SNIPPET ---
 // НОВЫЙ универсальный fetch-хелпер
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...(init || {}), headers: { ...adminHeaders(), ...(init?.headers || {}) } })
-
+// Универсальный fetch-хелпер (переименован, чтобы не конфликтовать)
+async function apiJSON<T = any>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init)
   let data: any = null
-  const ct = res.headers.get('content-type') || ''
-
-  try {
-    if (ct.includes('application/json')) {
-      data = await res.json()
-    } else {
-      const text = await res.text()
-      try { data = text ? JSON.parse(text) : null } catch { data = text } // вдруг пришёл текст
-    }
-  } catch {
-    // Пустое тело (например, 204) — оставляем data = null
+  try { data = await res.json() } catch { /* тело пустое/не JSON */ }
+  if (!res.ok || (data && data.ok === false)) {
+    throw new Error(data?.error || res.statusText)
   }
-
-  if (!res.ok || (data && typeof data === 'object' && data.ok === false)) {
-    const msg =
-      (data && (data.error || data.message)) ||
-      (typeof data === 'string' ? data : '') ||
-      res.statusText
-    throw new Error(msg)
-  }
-
-  // На случай «успеха без тела» вернём пустой объект, чтобы кнопки не падали
-  return (data ?? ({} as any)) as T
+  return (data ?? {}) as T
 }
 
 // ---- UI --------------------------------------------------------------------
