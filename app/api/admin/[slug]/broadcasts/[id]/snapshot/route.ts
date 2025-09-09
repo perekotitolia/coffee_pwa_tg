@@ -4,19 +4,17 @@
 export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabaseServer'
+import { assertBotAdmin } from '@/app/api/_adminAuth'
 
-function assertAdmin3(req: Request) {
-  const key = process.env.ADMIN_API_KEY
-  if (!key || req.headers.get('x-admin-key') !== key) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
-  }
-  return null
-}
-
-export async function POST(req: Request, { params }: any) {
-  const unauth = assertAdmin3(req); if (unauth) return unauth
+export async function POST(req: Request, { params }: { params: { slug: string, id: string } }) {
+  const unauth = assertBotAdmin(req, params.slug); if (unauth) return unauth
   const id = Number(params.id)
   const supa = createServerClient()
+  const { data: camp } = await supa.from('campaigns').select('id, bot_id').eq('id', id).maybeSingle()
+  if (!camp) return NextResponse.json({ ok: false, error: 'campaign not found' }, { status: 404 })
+
+  const { data: bot } = await supa.from('bots').select('id, shop_id').eq('id', camp.bot_id).maybeSingle()
+  if (!bot) return NextResponse.json({ ok: false, error: 'bot not found' }, { status: 404 })
 
   const { data: seg } = await supa.from('campaign_segments').select('*').eq('campaign_id', id).maybeSingle()
   const f = (seg?.filters || {}) as any
@@ -54,5 +52,5 @@ export async function POST(req: Request, { params }: any) {
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   }
   await supa.from('campaigns').update({ state: 'snapshotted' }).eq('id', id)
-  return NextResponse.json({ ok: true, total: acc.length })
+  return NextResponse.json({ ok: true, total })
 }

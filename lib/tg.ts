@@ -5,6 +5,33 @@ function toPngBlob(u8: Uint8Array) {
   copy.set(u8)
   return new Blob([copy], { type: 'image/png' })
 }
+// lib/tg.ts
+export function makeTg(token?: string) {
+  const t = token || process.env.TELEGRAM_BOT_TOKEN!
+  if (!t) throw new Error('TELEGRAM_BOT_TOKEN missing (and no token passed)')
+
+  async function sendMessage(chatId: string | number, text: string, extra?: any) {
+    const url = `https://api.telegram.org/bot${t}/sendMessage`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, ...(extra || {}) })
+    })
+    if (!res.ok) throw new Error(`TG sendMessage ${res.status} ${await res.text()}`)
+  }
+
+  async function sendPhotoByUrl(chatId: string | number, photoUrl: string, extra?: any) {
+    const url = `https://api.telegram.org/bot${t}/sendPhoto`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, ...(extra || {}) })
+    })
+    if (!res.ok) throw new Error(`TG sendPhoto ${res.status} ${await res.text()}`)
+  }
+
+  return { sendMessage, sendPhotoByUrl }
+}
 
 export async function sendPhoto(chatId: string, png: Uint8Array, caption?: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN
@@ -55,4 +82,5 @@ export async function sendPhotoByUrl(chatId: string, photoUrl: string, opts: Pho
   })
   if (!res.ok) throw new Error(`TG sendPhoto failed: ${res.status} ${await res.text()}`)
 }
+
 
