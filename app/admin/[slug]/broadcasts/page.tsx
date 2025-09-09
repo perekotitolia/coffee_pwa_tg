@@ -1,5 +1,8 @@
 'use client'
+import { useParams } from 'next/navigation'
 
+export default function Page() {
+  const { slug } = useParams<{ slug: string }>()
 // Broadcast Admin page (Next.js /app/admin/broadcasts/page.tsx)
 // Fix: Next.js pages cannot have arbitrary named exports. Removed all `export`ed
 // helpers/types/constants to satisfy the Page type checker.
@@ -49,12 +52,12 @@ if (typeof window !== 'undefined' && !(window as any).__BCAST_HELPER_TESTED__) {
 // ---- Small fetch helper ----------------------------------------------------
 // оставляем adminHeaders как есть
 function adminHeaders() { return { 'x-admin-key': localStorage.getItem(LS_KEY) || '' } }
-async function api(path: string, init?: RequestInit) {
+async function apiJSON(path: string, init?: RequestInit) {
   const r = await fetch(`/api/admin/${slug}${path}`, { ...init, headers: { ...init?.headers, ...adminHeaders() } })
   return r.json()
 }
 
-// 1) Add a small helper near api()/adminHeaders (client side):
+// 1) Add a small helper near apiJSON()/adminHeaders (client side):
 // --- BEGIN SNIPPET ---
 async function uploadFile(url: string, file: File) {
   const key = (typeof window !== 'undefined' && localStorage.getItem('ADMIN_API_KEY')) || ''
@@ -70,7 +73,7 @@ setImageUrl(uploadedUrl)
   return data as { ok: true, url: string }
 }
 // пример: внутри client-компонента
-// рядом с твоими api()/adminHeaders
+// рядом с твоими apiJSON()/adminHeaders
 async function uploadFileToStorage(slug: string, file: File): Promise<string> {
   const key =
     (typeof window !== 'undefined'
