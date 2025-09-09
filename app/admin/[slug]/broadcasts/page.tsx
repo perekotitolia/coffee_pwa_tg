@@ -48,10 +48,12 @@ if (typeof window !== 'undefined' && !(window as any).__BCAST_HELPER_TESTED__) {
 
 // ---- Small fetch helper ----------------------------------------------------
 // оставляем adminHeaders как есть
-const adminHeaders = () => ({
-  'content-type': 'application/json',
-  'x-admin-key': (typeof window !== 'undefined' && localStorage.getItem('ADMIN_API_KEY')) || ''
-})
+function adminHeaders() { return { 'x-admin-key': localStorage.getItem(LS_KEY) || '' } }
+async function api(path: string, init?: RequestInit) {
+  const r = await fetch(`/api/admin/${slug}${path}`, { ...init, headers: { ...init?.headers, ...adminHeaders() } })
+  return r.json()
+}
+
 // 1) Add a small helper near api()/adminHeaders (client side):
 // --- BEGIN SNIPPET ---
 async function uploadFile(url: string, file: File) {
@@ -59,14 +61,24 @@ async function uploadFile(url: string, file: File) {
   const fd = new FormData(); fd.append('file', file)
   const res = await fetch(url, { method: 'POST', headers: { 'x-admin-key': key }, body: fd })
   let data: any
+const url = await uploadFileToStorage(slug, file)
+setImageUrl(url)
+
   try { data = await res.json() } catch { data = { ok: false, error: await res.text() } }
   if (!res.ok || data?.ok === false) throw new Error(data?.error || res.statusText)
   return data as { ok: true, url: string }
 }
-async function uploadFileToStorage(file: File): Promise<string> {
-  const { url } = await uploadFile('/api/admin/uploads', file)
-  return url
+// пример: внутри client-компонента
+async function uploadFileToStorage(slug: string, file: File): Promise<string> {
+  const key = localStorage.getItem(`ADMIN_API_KEY__${slug.toUpperCase()}`) || ''
+  const fd = new FormData(); fd.append('file', file)
+  const r = await fetch(`/admin/${slug}/uploads`, { method: 'POST', headers: { 'x-admin-key': key }, body: fd })
+  const data = await r.json()
+  if (!r.ok || data?.ok === false) throw new Error(data?.error || r.statusText)
+  return data.url as string
 }
+
+
 // --- END SNIPPET ---
 // НОВЫЙ универсальный fetch-хелпер
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -99,12 +111,15 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 // ---- UI --------------------------------------------------------------------
-export default function BroadcastsPage() {
+export default function Page({ params }: { params: { slug: string } }) {
+  const slug = params.slug
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [buttonText, setButtonText] = useState('')
   const [buttonUrl, setButtonUrl] = useState('')
+const LS_KEY = `ADMIN_API_KEY__${slug.toUpperCase()}`
+// input вверху страницы хранит/читает этот ключ
 
   const [lastActiveDays, setDays] = useState(90)
   const [minPoints, setMinPoints] = useState(0)
