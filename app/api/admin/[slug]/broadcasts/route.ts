@@ -1,30 +1,36 @@
-
 // app/api/admin/[slug]/broadcasts/route.ts
 export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabaseServer'
 import { assertBotAdmin } from '@/app/api/_adminAuth'
 
-export async function GET(req: Request, { params }: { params: { slug: string } }) {
-  const unauth = assertBotAdmin(req, params.slug); if (unauth) return unauth
+export async function GET(req: Request, context: { params: { slug: string } }) {
+  const unauth = assertBotAdmin(req, context.params.slug); if (unauth) return unauth
   const supa = createServerClient()
-  const { data: bot } = await supa.from('bots').select('id').eq('slug', params.slug).maybeSingle()
+
+  const { data: bot } = await supa.from('bots').select('id').eq('slug', context.params.slug).maybeSingle()
   if (!bot) return NextResponse.json({ ok: false, error: 'bot not found' }, { status: 404 })
-  const { data, error } = await supa.from('campaigns')
-    .select('*').eq('bot_id', bot.id)
+
+  const { data, error } = await supa
+    .from('campaigns')
+    .select('*')
+    .eq('bot_id', bot.id)
     .order('id', { ascending: false })
+
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, items: data || [] })
+  return NextResponse.json({ ok: true, items: data ?? [] })
 }
 
-export async function POST(req: Request, { params }: { params: { slug: string } }) {
-  const unauth = assertBotAdmin(req, params.slug); if (unauth) return unauth
+export async function POST(req: Request, context: { params: { slug: string } }) {
+  const unauth = assertBotAdmin(req, context.params.slug); if (unauth) return unauth
   const supa = createServerClient()
-  const { data: bot } = await supa.from('bots').select('id').eq('slug', params.slug).maybeSingle()
+
+  const { data: bot } = await supa.from('bots').select('id').eq('slug', context.params.slug).maybeSingle()
   if (!bot) return NextResponse.json({ ok: false, error: 'bot not found' }, { status: 404 })
 
-  const body = await req.json()
-  const row = { ...body, bot_id: bot.id, state: 'draft' }
+  const payload = await req.json()
+  const row = { ...payload, bot_id: bot.id, state: payload.state ?? 'draft' }
+
   const { data, error } = await supa.from('campaigns').insert(row).select('*').single()
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true, item: data })
