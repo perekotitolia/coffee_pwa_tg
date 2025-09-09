@@ -29,28 +29,62 @@ const supa = createServerClient()
 
 let processed = 0
 for (let i = 0; i < BATCH; i++) {
-const raw = await redis.lpop(`broadcast:${id}:q` as any) as any
-if (!raw) break
-processed++
-const job = JSON.parse(typeof raw === 'string' ? raw : String(raw))
-const { data: c } = await supa.from('campaigns')
-.select('id, body, image_url, button_text, button_url, parse_mode')
-.eq('id', job.campaign_id).single()
-try {
-const markup = (c?.button_text && c?.button_url)
-? { inline_keyboard: [[{ text: c.button_text, url: c.button_url }]] }
-: undefined
-if (c?.image_url) {
-await sendPhotoByUrl(String(job.tg_id), c.image_url, { caption: c.body, parse_mode: c?.parse_mode === 'HTML' ? 'HTML' : 'Markdown', reply_markup: markup })
-} else {
-await sendMessage(String(job.tg_id), c!.body, { parse_mode: c?.parse_mode === 'HTML' ? 'HTML' : 'Markdown', reply_markup: markup })
+  const raw = await redis.lpop(`broadcast:${id}:q` as any) as any
+  if (!raw) break
+  processed++
+
+  // robust parse: string -> JSON.parse, object -> as is, other -> try stringify
+  let job: any
+  try {
+    if (typeof raw === 'string') {
+      job = JSON.parse(raw)
+    } else if (raw && typeof raw === 'object') {
+      job = raw
+    } else {
+      job = JSON.parse(String(raw))
+    }
+  } catch {
+    // логируем битый элемент и продолжаем
+    await supa.from('campaign_logs').insert({
+      campaign_id: id,
+      tg_id: null,
+      status: 'ERROR',
+      error: `Bad queue payload: ${typeof raw} ${String(raw)}`
+    })
+    continue
+  }
+
+  const { data: c } = await supa.from('campaigns')
+    .select('id, body, image_url, button_text, button_url, parse_mode')
+    .eq('id', job.campaign_id).single()
+
+  try {
+    const markup = (c?.button_text && c?.button_url)
+      ? { inline_keyboard: [[{ text: c.button_text, url: c.button_url }]] }
+      : undefined
+
+    if (c?.image_url) {
+      await sendPhotoByUrl(String(job.tg_id), c.image_url, {
+        caption: c.body,
+        parse_mode: c?.parse_mode === 'HTML' ? 'HTML' : 'Markdown',
+        reply_markup: markup
+      })
+    } else {
+      await sendMessage(String(job.tg_id), c!.body, {
+        parse_mode: c?.parse_mode === 'HTML' ? 'HTML' : 'Markdown',
+        reply_markup: markup
+      })
+    }
+
+    await supa.from('campaign_logs').insert({ campaign_id: id, tg_id: job.tg_id, status: 'SENT' })
+    await new Promise(r => setTimeout(r, 50))
+  } catch (e: any) {
+    await supa.from('campaign_logs').insert({
+      campaign_id: id, tg_id: job.tg_id, status: 'ERROR', error: String(e?.message || e)
+    })
+  }
 }
-await supa.from('campaign_logs').insert({ campaign_id: id, tg_id: job.tg_id, status: 'SENT' })
-await new Promise(r => setTimeout(r, 50))
-} catch (e: any) {
-await supa.from('campaign_logs').insert({ campaign_id: id, tg_id: job.tg_id, status: 'ERROR', error: String(e?.message || e) })
-}
-}
+
 const left = await redis.llen(`broadcast:${id}:q`)
 if (!left) await supa.from('campaigns').update({ state: 'done' }).eq('id', id)
 return NextResponse.json({ ok: true, processed, left: Number(left) })
