@@ -61,21 +61,35 @@ async function uploadFile(url: string, file: File) {
   const fd = new FormData(); fd.append('file', file)
   const res = await fetch(url, { method: 'POST', headers: { 'x-admin-key': key }, body: fd })
   let data: any
-const url = await uploadFileToStorage(slug, file)
-setImageUrl(url)
+const uploadedUrl = await uploadFileToStorage(slug, f)
+setImageUrl(uploadedUrl)
+
 
   try { data = await res.json() } catch { data = { ok: false, error: await res.text() } }
   if (!res.ok || data?.ok === false) throw new Error(data?.error || res.statusText)
   return data as { ok: true, url: string }
 }
 // пример: внутри client-компонента
+// рядом с твоими api()/adminHeaders
 async function uploadFileToStorage(slug: string, file: File): Promise<string> {
-  const key = localStorage.getItem(`ADMIN_API_KEY__${slug.toUpperCase()}`) || ''
-  const fd = new FormData(); fd.append('file', file)
-  const r = await fetch(`/admin/${slug}/uploads`, { method: 'POST', headers: { 'x-admin-key': key }, body: fd })
-  const data = await r.json()
-  if (!r.ok || data?.ok === false) throw new Error(data?.error || r.statusText)
-  return data.url as string
+  const key =
+    (typeof window !== 'undefined'
+      ? (localStorage.getItem(`ADMIN_API_KEY__${slug.toUpperCase()}`) ||
+         localStorage.getItem('ADMIN_API_KEY') || '')
+      : '')
+  const fd = new FormData()
+  fd.append('file', file)
+
+  const res = await fetch(`/api/admin/${slug}/uploads`, {
+    method: 'POST',
+    headers: { 'x-admin-key': key },
+    body: fd,
+  })
+
+  let data: any
+  try { data = await res.json() } catch { data = { ok: false, error: await res.text() } }
+  if (!res.ok || data?.ok === false) throw new Error(data?.error || res.statusText)
+  return (data as { ok: true, url: string }).url
 }
 
 
