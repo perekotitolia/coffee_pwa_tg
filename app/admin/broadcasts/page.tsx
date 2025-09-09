@@ -63,6 +63,10 @@ async function uploadFile(url: string, file: File) {
   if (!res.ok || data?.ok === false) throw new Error(data?.error || res.statusText)
   return data as { ok: true, url: string }
 }
+async function uploadFileToStorage(file: File): Promise<string> {
+  const { url } = await uploadFile('/api/admin/uploads', file)
+  return url
+}
 // --- END SNIPPET ---
 // НОВЫЙ универсальный fetch-хелпер
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
