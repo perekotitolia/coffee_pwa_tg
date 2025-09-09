@@ -240,19 +240,22 @@ const LS_KEY = `ADMIN_API_KEY__${slug.toUpperCase()}`
     type="file"
     accept="image/*"
     onChange={async (e) => {
-      const input = e.currentTarget
-      const f = input?.files?.[0]; if (!f) return
-      try {
-        setBusy(true)
-        const url = await uploadFileToStorage(f)
-        setImageUrl(url)
-      } catch (err: any) {
-        alert(`Upload error: ${err?.message || err}`)
-      } finally {
-        setBusy(false)
-        if (input) input.value = ''
-      }
-    }}
+  const input = e.currentTarget
+  const file = input?.files?.[0]; if (!file) return
+
+  try {
+    setBusy(true)
+    // ⬇️ было: const url = await uploadFileToStorage(slug, file)
+    const uploadedUrl = await uploadFileToStorage(slug, file)
+    setImageUrl(uploadedUrl)
+  } catch (err: any) {
+    alert(`Upload error: ${err?.message || err}`)
+  } finally {
+    setBusy(false)
+    if (input) input.value = ''
+  }
+}}
+
   />
 </div>
 
