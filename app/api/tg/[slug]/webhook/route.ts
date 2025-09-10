@@ -33,7 +33,17 @@ export async function POST(req: Request, ctx: any) {
       { ok: false, error: r.error },
       { status: r.status },
     );
-  const tg = makeTg(r.bot.token);
+  // безопасно достаём бота
+const bot = r?.bot;
+if (!bot?.token) {
+  return NextResponse.json(
+    { ok: false, error: 'bot not found' },
+    { status: 404 }
+  );
+}
+
+const tg = makeTg(bot.token);
+
 
   // ----- дальше вставь твою текущую логику обработки апдейтов -----
   const update = await req.json();
