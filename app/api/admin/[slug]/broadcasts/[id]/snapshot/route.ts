@@ -68,4 +68,50 @@ export async function POST(req: Request, ctx: any) {
       q = q.gte('last_activity_at', since);
     }
     if (Array.isArray(f.shop_ids) && f.shop_ids.length) q = q.in('last_shop_id', f.shop_ids);
-    if (Array.isArray(f.include_tg_ids) && f.i
+    if (Array.isArray(f.include_tg_ids) && f.include_tg_ids.length)
+      q = q.in('tg_id', f.include_tg_ids.map(Number));
+    if (Array.isArray(f.exclude_tg_ids) && f.exclude_tg_ids.length)
+      q = q.not('tg_id', 'in', `(${f.exclude_tg_ids.map(Number).join(',')})`);
+
+    // собрать аудиторию
+    const acc: number[] = [];
+    let from = 0;
+    const step = 1000;
+    for (;;) {
+      const { data, error } = await q.range(from, from + step - 1);
+      if (error) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      }
+      if (!data?.length) break;
+      for (const r of data) {
+        if (r.tg_id) acc.push(Number(r.tg_id));
+      }
+      if (data.length < step) break;
+      from += step;
+    }
+
+    // заменить получателей
+    await supa.from('campaign_recipients').delete().eq('campaign_id', id);
+    for (let i = 0; i < acc.length; i += 1000) {
+      const batch = acc.slice(i, i + 1000).map((tg_id) => ({ campaign_id: id, tg_id }));
+      const { error } = await supa.from('campaign_recipients').insert(batch);
+      if (error) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      }
+    }
+
+    // финал: обновить snapshot и вернуть total
+    const total = acc.length;
+    await supa
+      .from('campaigns')
+      .update({ snapshot: total, state: 'snapshotted' })
+      .eq('id', id);
+
+    return NextResponse.json({ ok: true, total });
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? String(e) },
+      { status: 500 },
+    );
+  }
+}
