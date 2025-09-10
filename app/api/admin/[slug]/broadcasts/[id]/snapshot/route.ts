@@ -102,3 +102,4 @@ await supa
 
 return NextResponse.json({ ok: true, total });
 
+}
