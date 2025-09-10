@@ -13,7 +13,9 @@ async function resolveBot(supa: ReturnType<typeof createServerClient>, slug: str
   return { ok: true as const, bot }
 }
 
-export async function POST(req: Request, { params }: { params: { slug: string } }) {
+export async function POST(req: Request, ctx: any) {
+  const { params } = (ctx ?? {}) as any;
+
   const supa = createServerClient()
   const r = await resolveBot(supa, params.slug, req)
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: r.status })

@@ -13,7 +13,9 @@ function assertAdmin4(req: Request) {
   return null
 }
 
-export async function GET(req: Request, { params }: any) {
+export async function GET(req: Request, ctx: any) {
+  const { params } = (ctx ?? {}) as any;
+
   const unauth = assertAdmin4(req); if (unauth) return unauth
   const id = Number(params.id)
   const supa = createServerClient()

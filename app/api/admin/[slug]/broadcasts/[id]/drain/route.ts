@@ -8,7 +8,9 @@ import { assertBotAdmin } from '@/app/api/_adminAuth'
 
 const BATCH = Number(process.env.DRIP_BROADCAST_BATCH || 40)
 
-export async function POST(req: Request, { params }: { params: { slug: string, id: string } }) {
+export async function POST(req: Request, ctx: any) {
+  const { params } = (ctx ?? {}) as any;
+
   const unauth = assertBotAdmin(req, params.slug); if (unauth) return unauth
   const id = Number(params.id)
   const supa = createServerClient()

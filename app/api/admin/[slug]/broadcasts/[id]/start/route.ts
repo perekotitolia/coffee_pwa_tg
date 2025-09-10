@@ -16,7 +16,9 @@ return null
 }
 
 
-export async function POST(req: Request, { params }: any) {
+export async function POST(req: Request, ctx: any) {
+  const { params } = (ctx ?? {}) as any;
+
 try {
 const unauth = assertAdmin2(req); if (unauth) return unauth
 const id = Number(params.id)
