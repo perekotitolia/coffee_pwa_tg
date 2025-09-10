@@ -1,4 +1,4 @@
-// app/api/admin/[slug]/broadcasts/[id]/drain/route.ts
+﻿// app/api/admin/[slug]/broadcasts/[id]/drain/route.ts
 export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
@@ -72,14 +72,12 @@ export async function POST(req: Request, ctx: any) {
         .insert({ campaign_id: id, tg_id: job.tg_id, status: "SENT" });
       await new Promise((r) => setTimeout(r, 50));
     } catch (e: any) {
-      await supa
-        .from("campaign_logs")
-        .insert({
-          campaign_id: id,
-          tg_id: job.tg_id,
-          status: "ERROR",
-          error: String(e?.message || e),
-        });
+      await supa.from("campaign_logs").insert({
+        campaign_id: id,
+        tg_id: job.tg_id,
+        status: "ERROR",
+        error: String(e?.message || e),
+      });
     }
   }
 

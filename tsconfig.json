@@ -33,14 +33,16 @@
     "incremental": true
   },
   "include": [
-    "next-env.d.ts",
+    "**/*.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "**/*.d.ts"          // <- ensure d.ts are included
+    "next-env.d.ts" // <- ensure d.ts are included
+    ,
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "scripts",
-    "scripts/**/*"       // <- exclude CLI scripts from Next build type-check
+    "scripts/**/*" // <- exclude CLI scripts from Next build type-check
   ]
 }

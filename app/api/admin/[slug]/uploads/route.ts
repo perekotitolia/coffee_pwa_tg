@@ -1,9 +1,9 @@
-export const runtime = "nodejs";
+﻿export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabaseServer";
 import { assertBotAdmin } from "@/app/api/_adminAuth";
 
-export async function POST(req: Request, context: any) {
+export async function POST(req: Request, ctx: any) {
   const slug = String(context?.params?.slug ?? "");
   const unauth = assertBotAdmin(req, slug);
   if (unauth) return unauth;
