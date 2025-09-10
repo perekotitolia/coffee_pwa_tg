@@ -4,8 +4,9 @@ import { createServerClient } from '@/lib/supabaseServer'
 import { assertBotAdmin } from '@/app/api/_adminAuth'
 
 export async function POST(req: Request, context: any) {
-  const slug = context?.params?.slug as string
+  const slug = String(context?.params?.slug ?? '')
   const unauth = assertBotAdmin(req, slug); if (unauth) return unauth
+
   const supa = createServerClient()
 
   const form = await req.formData()
