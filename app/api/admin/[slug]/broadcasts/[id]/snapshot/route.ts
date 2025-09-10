@@ -83,23 +83,23 @@ export async function POST(req: Request, ctx: any) {
   }
 
   await supa.from("campaign_recipients").delete().eq("campaign_id", id);
-  for (let i = 0; i < acc.length; i += 1000) {
-    const rows = acc
-      .slice(i, i + 1000)
-      .map((tg_id) => ({ campaign_id: id, tg_id }));
-    const { error } = await supa.from("campaign_recipients").insert(rows);
-    if (error)
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 },
-      );
-  }
-const total = Array.isArray(rows) ? rows.length : 0;
+for (let i = 0; i < acc.length; i += 1000) {
+  const batch = acc
+    .slice(i, i + 1000)
+    .map((tg_id) => ({ campaign_id: id, tg_id }));
+  const { error } = await supa.from("campaign_recipients").insert(batch);
+  if (error)
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 },
+    );
+}
+
+const total = acc.length; // ← считаем весь список, а не последний чанк
+
 await supa
-  .from('campaigns')
-  .update({ snapshot: total, state: 'snapshotted' })
-  .eq('id', id);
+  .from("campaigns")
+  .update({ snapshot: total, state: "snapshotted" })
+  .eq("id", id);
 
 return NextResponse.json({ ok: true, total });
-
-}
