@@ -6,14 +6,14 @@ import { assertBotAdmin } from "@/app/api/_adminAuth";
 
 // GET: список кампаний данного бота
 export async function GET(req: Request, context: { params: { slug: string } }) {
-  const unauth = assertBotAdmin(req, context.params.slug);
+  const unauth = assertBotAdmin(req, context.(ctx as any).params.slug);
   if (unauth) return unauth;
   const supa = createServerClient();
 
   const { data: bot, error: e1 } = await supa
     .from("bots")
     .select("id")
-    .eq("slug", context.params.slug)
+    .eq("slug", context.(ctx as any).params.slug)
     .maybeSingle();
   if (e1)
     return NextResponse.json({ ok: false, error: e1.message }, { status: 500 });
@@ -43,14 +43,14 @@ export async function POST(
   context: { params: { slug: string } },
 ) {
   try {
-    const unauth = assertBotAdmin(req, context.params.slug);
+    const unauth = assertBotAdmin(req, context.(ctx as any).params.slug);
     if (unauth) return unauth;
     const supa = createServerClient();
 
     const { data: bot, error: e1 } = await supa
       .from("bots")
       .select("id")
-      .eq("slug", context.params.slug)
+      .eq("slug", context.(ctx as any).params.slug)
       .maybeSingle();
     if (e1)
       return NextResponse.json(
