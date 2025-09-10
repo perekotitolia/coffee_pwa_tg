@@ -8,7 +8,7 @@ import { assertBotAdmin } from "@/app/api/_adminAuth";
 
 export async function POST(req: Request, ctx: any) {
   const { params } = (ctx ?? {}) as any;
-const total = Array.isArray(targets) ? targets.length : 0;
+
   const unauth = assertBotAdmin(req, params.slug);
   if (unauth) return unauth;
   const id = Number(params.id);
@@ -94,6 +94,11 @@ const total = Array.isArray(targets) ? targets.length : 0;
         { status: 500 },
       );
   }
-  await supa.from("campaigns").update({ state: "snapshotted" }).eq("id", id);
-  return NextResponse.json({ ok: true, total });
-}
+const total = Array.isArray(rows) ? rows.length : 0;
+await supa
+  .from('campaigns')
+  .update({ snapshot: total, state: 'snapshotted' })
+  .eq('id', id);
+
+return NextResponse.json({ ok: true, total });
+
