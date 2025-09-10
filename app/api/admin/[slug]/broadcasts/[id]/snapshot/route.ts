@@ -8,7 +8,7 @@ import { assertBotAdmin } from "@/app/api/_adminAuth";
 
 export async function POST(req: Request, ctx: any) {
   const { params } = (ctx ?? {}) as any;
-
+const total = Array.isArray(targets) ? targets.length : 0;
   const unauth = assertBotAdmin(req, params.slug);
   if (unauth) return unauth;
   const id = Number(params.id);
